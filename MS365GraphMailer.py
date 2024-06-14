@@ -217,7 +217,7 @@ def main():
 	parser.add_argument('-c', '--cc', type=str, help='Comma separated list of Cc addresses', required=False)
 	parser.add_argument('-b', '--bcc', type=str, help='Comma separated list of Bcc addresses', required=False)
 	parser.add_argument('-r', '--replyto', type=str, help='The address to set for the ReplyTo field', required=False)
-	parser.add_argument('-h', '--headers', type=str, help='Comma separated list of headers in the format "Header1:Value1,Header2:Value2,..."', required=False)
+	parser.add_argument('-H', '--headers', type=str, help='Comma separated list of headers in the format "Header1:Value1,Header2:Value2,..."', required=False)
 	parser.add_argument('-o', '--contenttype', type=str, help='Content type of message (default: Text)', required=False, default='Text', choices=['Text', 'HTML'])
 	parser.add_argument('-n', '--nosavetosent', action='store_true', help='Do not save sent message to "Sent Items" folder', required=False)
 
