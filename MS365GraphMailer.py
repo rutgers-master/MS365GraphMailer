@@ -6,7 +6,7 @@ try:
 except:
 	print("We need the 'requests' package: pip install requests")
 	raise SystemExit
-import json, argparse, sys
+import json, argparse, sys, os, base64
 
 # This Python script is designed to send emails using the Microsoft Graph API.
 # It uses an Azure AD App Registration to authenticate and authorize email
@@ -120,6 +120,7 @@ class MS365GraphMailer:
 				subject (str): The subject of the email.
 				body (str): The body of the email.
 				headers (dict): Additional headers to include in the email. (optional)
+				attachments (list): List of file paths to attach to the email. (optional)
 				contentType (str): The content type of the email body 'Text' or 'HTML'. (optional, default: 'Text')
 				saveToSentItems (bool): Whether to save the email in the Sent Items folder. (optional, default: True)
 
@@ -198,6 +199,28 @@ class MS365GraphMailer:
 		if 'headers' in data:
 			message['message']['internetMessageHeaders'] = [{"name": key, "value": value} for key, value in data['headers'].items()]
 
+		# Add attachments if they are set
+		if 'attachments' in data:
+			message['message']['attachments'] = []
+			for attachment in data['attachments']:
+				# Check if the file exists
+				if not os.path.exists(attachment):
+					raise FileNotFoundError("Attachment file '%s' does not exist." % (attachment))
+				
+				# Get the filename and file content
+				filename = os.path.basename(attachment)
+				with open(attachment, 'rb') as f:
+					content = base64.b64encode(f.read()).decode('utf-8')
+
+				# Add the attachment to the message
+				message['message']['attachments'].append({
+					"@odata.type": "#microsoft.graph.fileAttachment",
+					"name": filename,
+					"contentBytes": content,
+					"isInline": False,
+					"contentType": "application/octet-stream"
+				})
+
 		# Make the API call
 		response = requests.post(endpoint, headers=headers, data=json.dumps(message))
 
@@ -219,6 +242,7 @@ def main():
 	parser.add_argument('-r', '--replyto', type=str, help='The address to set for the ReplyTo field', required=False)
 	parser.add_argument('-H', '--headers', type=str, help='Comma separated list of headers in the format "Header1:Value1,Header2:Value2,..."', required=False)
 	parser.add_argument('-o', '--contenttype', type=str, help='Content type of message (default: Text)', required=False, default='Text', choices=['Text', 'HTML'])
+	parser.add_argument('-a', '--attach', action='append', help='Path to the file to attach')
 	parser.add_argument('-n', '--nosavetosent', action='store_true', help='Do not save sent message to "Sent Items" folder', required=False)
 
 	# Parse command line arguments
@@ -251,6 +275,10 @@ def main():
 	if args.headers:
 		headers = dict(h.split(':') for h in args.headers.split(','))
 		email_data['headers'] = headers
+
+	# If attachments are set, add them to the email data
+	if args.attach:
+		email_data['attachments'] = args.attach
 
 	# Create an instance of the MS365GraphMailer class
 	mailer = MS365GraphMailer(CLIENT_ID, CLIENT_SECRET, TENANT_ID)
