@@ -240,9 +240,9 @@ def main():
 	parser.add_argument('-c', '--cc', type=str, help='Comma separated list of Cc addresses', required=False)
 	parser.add_argument('-b', '--bcc', type=str, help='Comma separated list of Bcc addresses', required=False)
 	parser.add_argument('-r', '--replyto', type=str, help='The address to set for the ReplyTo field', required=False)
-	parser.add_argument('-H', '--headers', type=str, help='Comma separated list of headers in the format "Header1:Value1,Header2:Value2,..."', required=False)
+	parser.add_argument('-H', '--header', action='append', type=str, help='Header in the format "Header1:Value1" (use of this argument for multiple headers)', required=False)
 	parser.add_argument('-o', '--contenttype', type=str, help='Content type of message (default: Text)', required=False, default='Text', choices=['Text', 'HTML'])
-	parser.add_argument('-a', '--attach', action='append', help='Path to the file to attach')
+	parser.add_argument('-a', '--attach', action='append', help='Path to the file to attach (use of this argument for multiple attachments)', required=False)
 	parser.add_argument('-n', '--nosavetosent', action='store_true', help='Do not save sent message to "Sent Items" folder', required=False)
 
 	# Parse command line arguments
@@ -272,8 +272,15 @@ def main():
 	if args.replyto: email_data['replyto'] = args.replyto
 
 	# Parse headers if they are set, and add them to the email data
-	if args.headers:
-		headers = dict(h.split(':') for h in args.headers.split(','))
+	headers = {}
+	for h in args.header:
+		temp_header = h.split(':', 1)
+		if len(temp_header) == 2:
+			temp_header[1] = temp_header[1].strip()
+			headers[temp_header[0]] = temp_header[1]
+		else:
+			print("Invalid header format: %s" % (h))
+			sys.exit(0)
 		email_data['headers'] = headers
 
 	# If attachments are set, add them to the email data
