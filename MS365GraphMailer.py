@@ -6,7 +6,7 @@ try:
 except:
 	print("We need the 'requests' package: pip install requests")
 	raise SystemExit
-import json, argparse, sys, os, base64
+import json, argparse, sys, os, base64, re
 
 # This Python script is designed to send emails using the Microsoft Graph API.
 # It uses an Azure AD App Registration to authenticate and authorize email
@@ -121,6 +121,7 @@ class MS365GraphMailer:
 				body (str): The body of the email.
 				headers (dict): Additional headers to include in the email. (optional)
 				attachments (list): List of file paths to attach to the email. (optional)
+				attachments_inline (list): List of file paths to attach to the email inline at the bottom of the email. (optional)
 				contentType (str): The content type of the email body 'Text' or 'HTML'. (optional, default: 'Text')
 				saveToSentItems (bool): Whether to save the email in the Sent Items folder. (optional, default: True)
 
@@ -213,13 +214,44 @@ class MS365GraphMailer:
 					content = base64.b64encode(f.read()).decode('utf-8')
 
 				# Add the attachment to the message
+				contentType = "application/octet-stream"
 				message['message']['attachments'].append({
 					"@odata.type": "#microsoft.graph.fileAttachment",
 					"name": filename,
 					"contentBytes": content,
 					"isInline": False,
-					"contentType": "application/octet-stream"
+					"contentType": contentType
 				})
+
+		# Add inline attachments if they are set
+		if 'attachments_inline' in data:
+			if 'attachments' not in message['message']:
+				message['message']['attachments'] = []
+			for attachment in data['attachments_inline']:
+				# Check if the file exists
+				if not os.path.exists(attachment):
+					raise FileNotFoundError("Attachment file '%s' does not exist." % (attachment))
+				
+				# Get the filename and file content
+				filename = os.path.basename(attachment)
+				with open(attachment, 'rb') as f:
+					content = base64.b64encode(f.read()).decode('utf-8')
+
+				# Add the attachment to the message
+				contentType = "application/octet-stream"
+				# we assume file extension is an image extension like .jpg, .png, .gif, etc...
+				contentType = "image/%s" % (os.path.splitext(filename)[1][1:].lower())
+				contentId = re.sub(r'\W+', '', filename)
+				message['message']['attachments'].append({
+					"@odata.type": "#microsoft.graph.fileAttachment",
+					"name": filename,
+					"contentBytes": content,
+					"isInline": True,
+					"contentId": contentId,
+					"contentType": contentType
+				})
+				message['message']['body']['content'] = "%s<img src=\"cid:%s\" alt=\"%s\" >" % (message['message']['body']['content'], contentId, contentId)
+
 
 		# Make the API call
 		response = requests.post(endpoint, headers=headers, data=json.dumps(message))
@@ -243,6 +275,7 @@ def main():
 	parser.add_argument('-H', '--header', action='append', type=str, help='Header in the format "Header1:Value1" (use of this argument for multiple headers)', required=False)
 	parser.add_argument('-o', '--contenttype', type=str, help='Content type of message (default: Text)', required=False, default='Text', choices=['Text', 'HTML'])
 	parser.add_argument('-a', '--attach', action='append', help='Path to the file to attach (use of this argument for multiple attachments)', required=False)
+	parser.add_argument('-i', '--attach-inline', action='append', help='Path to the file to attach inline (use of this argument for multiple attachments)', required=False)
 	parser.add_argument('-n', '--nosavetosent', action='store_true', help='Do not save sent message to "Sent Items" folder', required=False)
 
 	# Parse command line arguments
@@ -287,6 +320,8 @@ def main():
 	# If attachments are set, add them to the email data
 	if args.attach:
 		email_data['attachments'] = args.attach
+	if args.attach_inline:
+		email_data['attachments_inline'] = args.attach_inline
 
 	# Create an instance of the MS365GraphMailer class
 	mailer = MS365GraphMailer(CLIENT_ID, CLIENT_SECRET, TENANT_ID)
