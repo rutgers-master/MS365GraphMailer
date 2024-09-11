@@ -250,7 +250,8 @@ class MS365GraphMailer:
 					"contentId": contentId,
 					"contentType": contentType
 				})
-				message['message']['body']['content'] = "%s<img src=\"cid:%s\" alt=\"%s\" >" % (message['message']['body']['content'], contentId, contentId)
+				# We assume that the body of the HTML attachment already has the image tag with the same contentId which is the file name with all non-alphanumeric characters removed, this can be uncommented if you just want to add the image to the end of the email body
+				#message['message']['body']['content'] = "%s<img src=\"cid:%s\" alt=\"%s\" >" % (message['message']['body']['content'], contentId, contentId)
 
 
 		# Make the API call
