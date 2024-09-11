@@ -273,15 +273,16 @@ def main():
 
 	# Parse headers if they are set, and add them to the email data
 	headers = {}
-	for h in args.header:
-		temp_header = h.split(':', 1)
-		if len(temp_header) == 2:
-			temp_header[1] = temp_header[1].strip()
-			headers[temp_header[0]] = temp_header[1]
-		else:
-			print("Invalid header format: %s" % (h))
-			sys.exit(0)
-		email_data['headers'] = headers
+	if args.header:
+		for h in args.header:
+			temp_header = h.split(':', 1)
+			if len(temp_header) == 2:
+				temp_header[1] = temp_header[1].strip()
+				headers[temp_header[0]] = temp_header[1]
+			else:
+				print("Invalid header format: %s" % (h))
+				sys.exit(0)
+			email_data['headers'] = headers
 
 	# If attachments are set, add them to the email data
 	if args.attach:
